@@ -38,7 +38,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'tech-wealth-v3';
 
-export default export default function App() {
+export default function App() {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [eventData, setEventData] = useState(null);
