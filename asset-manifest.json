@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.js": "/TechWealth-Website/static/js/main.7309a0da.js",
-    "index.html": "/TechWealth-Website/index.html",
-    "main.7309a0da.js.map": "/TechWealth-Website/static/js/main.7309a0da.js.map"
+    "main.js": "/static/js/main.50f4c93f.js",
+    "index.html": "/index.html",
+    "main.50f4c93f.js.map": "/static/js/main.50f4c93f.js.map"
   },
   "entrypoints": [
-    "static/js/main.7309a0da.js"
+    "static/js/main.50f4c93f.js"
   ]
 }
