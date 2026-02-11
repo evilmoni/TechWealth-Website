@@ -4,8 +4,26 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TechWealth Website</title>
-  </head>
+
+    <script>
+      // 1. Paste your Firebase SDK snippet values here
+      window.__firebase_config = JSON.stringify({
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT_ID.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+      });
+
+      // 2. This must match the document ID in your Firestore 'artifacts' collection
+      window.__app_id = "tw-v5-stable"; 
+      
+      // 3. Optional: Only used if you have a custom backend token
+      window.__initial_auth_token = undefined; 
+    </script>
+    </head>
   <body>
     <div id="root"></div>
-  </body>
+    </body>
 </html>
