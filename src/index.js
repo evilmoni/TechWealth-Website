@@ -1,5 +1,4 @@
-readme
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -10,288 +9,639 @@ import {
 import { 
   getFirestore, 
   doc, 
-  onSnapshot, 
-  updateDoc, 
-  arrayUnion,
-  setDoc,
-  getDoc
+  setDoc, 
+  getDoc, 
+  collection, 
+  query, 
+  onSnapshot 
 } from 'firebase/firestore';
+import { 
+  Users, 
+  Calendar, 
+  Target, 
+  CreditCard, 
+  ShieldCheck, 
+  Globe, 
+  ChevronRight, 
+  Clock, 
+  Lock, 
+  ExternalLink,
+  CheckCircle2,
+  Menu,
+  X
+} from 'lucide-react';
 
-// --- CONFIG ---
+// --- Firebase Configuration ---
 const firebaseConfig = JSON.parse(__firebase_config);
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'tw-v5-stable';
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'tech-wealth-v1';
 
-// --- INLINE ICONS ---
-const IconCalendar = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
-const IconUsers = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
-const IconExternal = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>;
+// --- Translations ---
+const translations = {
+  en: {
+    navHome: "Home",
+    navEvents: "Events",
+    navVision: "Vision",
+    navJoin: "Join Us",
+    navMembers: "VIP Access",
+    heroTitle: "TechWealth Elite",
+    heroSub: "The ultimate hub for high-net-worth business leaders. Leverage collective human capital for explosive client acquisition.",
+    memberCount: "Global Members",
+    ctaJoin: "Apply for Membership",
+    standardEvents: "Standard Events",
+    vipEvents: "VIP Masterminds",
+    days: "d",
+    hours: "h",
+    mins: "m",
+    secs: "s",
+    attendees: "Attendees",
+    visionTitle: "Our Mission & Strategy",
+    visionStrategy: "The Roadmap to Affluence",
+    regTitle: "Secure Gateway",
+    regSub: "Elite status requires a singular commitment.",
+    payMethod: "Select Payment Method",
+    processPayment: "Complete Registration",
+    membershipId: "Unique Membership ID",
+    accessGranted: "Access Granted",
+    redirectMsg: "Unauthorized access. Redirecting to payment...",
+    telegramBtn: "Join Private Telegram",
+    lockedContent: "This area is reserved for verified members only.",
+    mission1: "Joint Ventures",
+    mission1Desc: "Strategic partnerships between industry titans.",
+    mission2: "High-Ticket Pipeline",
+    mission2Desc: "Exclusive access to $1M+ lead generation networks.",
+    mission3: "HR Leveraging",
+    mission3Desc: "Optimizing human capital for maximum efficiency."
+  },
+  zh: {
+    navHome: "首頁",
+    navEvents: "活動",
+    navVision: "願景",
+    navJoin: "加入我們",
+    navMembers: "貴賓登錄",
+    heroTitle: "TechWealth 財富精英會",
+    heroSub: "高淨值商業領袖的終極樞紐。利用集體人力資源實現爆炸式的客戶獲取。",
+    memberCount: "全球會員人數",
+    ctaJoin: "申請加入",
+    standardEvents: "標準活動",
+    vipEvents: "VIP 策劃會",
+    days: "天",
+    hours: "時",
+    mins: "分",
+    secs: "秒",
+    attendees: "參與人數",
+    visionTitle: "我們的使命與戰略",
+    visionStrategy: "富足之路",
+    regTitle: "安全網關",
+    regSub: "精英地位需要專一的承諾。",
+    payMethod: "選擇支付方式",
+    processPayment: "完成註冊",
+    membershipId: "唯一會員 ID",
+    accessGranted: "授權訪問",
+    redirectMsg: "未經授權。正在跳轉至支付頁面...",
+    telegramBtn: "加入私密 Telegram 群組",
+    lockedContent: "此區域僅限已驗證會員進入。",
+    mission1: "合資經營",
+    mission1Desc: "行業巨頭之間的戰略合作夥伴關係。",
+    mission2: "高價成交渠道",
+    mission2Desc: "獨家獲取 100 萬美元以上的潛在客戶網絡。",
+    mission3: "人力資源優化",
+    mission3Desc: "優化人力資本以實現最大效率。"
+  }
+};
 
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [userData, setUserData] = useState(null);
-  const [eventData, setEventData] = useState(null);
-  const [view, setView] = useState('landing');
-  const [initStatus, setInitStatus] = useState('loading');
-  const [errorMessage, setErrorMessage] = useState('');
+// --- Components ---
+
+const Navbar = ({ activePage, setActivePage, lang, setLang, isMember }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const t = translations[lang];
+
+  const navItems = [
+    { id: 'home', label: t.navHome },
+    { id: 'events', label: t.navEvents },
+    { id: 'vision', label: t.navVision },
+    { id: 'register', label: t.navJoin },
+    { id: 'members', label: t.navMembers, protected: true },
+  ];
+
+  return (
+    <nav className="fixed w-full z-50 bg-black/80 backdrop-blur-md border-b border-emerald-900/30">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-20 items-center">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActivePage('home')}>
+            <div className="w-10 h-10 bg-gradient-to-tr from-amber-500 to-emerald-600 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-900/20">
+              <ShieldCheck className="text-white" size={24} />
+            </div>
+            <span className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-emerald-400 bg-clip-text text-transparent tracking-tighter">
+              TechWealth
+            </span>
+          </div>
+
+          <div className="hidden md:flex items-center space-x-8">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActivePage(item.id)}
+                className={`text-sm font-medium transition-colors ${
+                  activePage === item.id ? 'text-amber-400' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+            <button 
+              onClick={() => setLang(lang === 'en' ? 'zh' : 'en')}
+              className="flex items-center gap-1 text-xs px-3 py-1 border border-emerald-800 rounded-full text-emerald-400 hover:bg-emerald-900/20 transition-all"
+            >
+              <Globe size={14} /> {lang === 'en' ? '繁中' : 'EN'}
+            </button>
+          </div>
+
+          <div className="md:hidden">
+            <button onClick={() => setIsOpen(!isOpen)} className="text-gray-400">
+              {isOpen ? <X size={28} /> : <Menu size={28} />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      {isOpen && (
+        <div className="md:hidden bg-black border-b border-emerald-900/30 p-4 space-y-4 animate-in slide-in-from-top duration-300">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => { setActivePage(item.id); setIsOpen(false); }}
+              className="block w-full text-left px-4 py-2 text-gray-400 hover:text-amber-400"
+            >
+              {item.label}
+            </button>
+          ))}
+          <button 
+            onClick={() => setLang(lang === 'en' ? 'zh' : 'en')}
+            className="w-full text-left px-4 py-2 text-emerald-400"
+          >
+            {lang === 'en' ? 'Switch to Traditional Chinese' : '切換至英文'}
+          </button>
+        </div>
+      )}
+    </nav>
+  );
+};
+
+const Counter = ({ target, duration = 2000 }) => {
+  const [count, setCount] = useState(0);
+  const nodeRef = useRef(null);
 
   useEffect(() => {
-    let mounted = true;
+    let startTime = null;
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      setCount(Math.floor(progress * target));
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
+  }, [target, duration]);
 
-    const startSession = async () => {
-      try {
-        // 1. Auth First
-        let cred;
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          cred = await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          cred = await signInAnonymously(auth);
-        }
-        
-        if (!mounted) return;
-        const currentUser = cred.user;
-        setUser(currentUser);
+  return <span>{count.toLocaleString()}</span>;
+};
 
-        // 2. Setup Correct Document Paths (Even segments only)
-        // Path: artifacts (col) / appId (doc) / users (col) / userId (doc)
-        const userRef = doc(db, 'artifacts', appId, 'users', currentUser.uid);
-        // Path: artifacts (col) / appId (doc) / public (col) / data (doc)
-        const eventRef = doc(db, 'artifacts', appId, 'public', 'data');
+const EventCard = ({ title, date, attendees, countdownDate, isVip, lang }) => {
+  const t = translations[lang];
+  const [timeLeft, setTimeLeft] = useState({ d: 0, h: 0, m: 0, s: 0 });
 
-        // Initial Data Fetch
-        const [uSnap, eSnap] = await Promise.all([getDoc(userRef), getDoc(eventRef)]);
-        
-        if (mounted) {
-          if (uSnap.exists()) {
-            setUserData(uSnap.data());
-          } else {
-            const initialProfile = { uid: currentUser.uid, verified: false, joined: Date.now() };
-            setUserData(initialProfile);
-            setDoc(userRef, initialProfile).catch(() => {});
-          }
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const distance = new Date(countdownDate).getTime() - new Date().getTime();
+      if (distance < 0) {
+        clearInterval(timer);
+      } else {
+        setTimeLeft({
+          d: Math.floor(distance / (1000 * 60 * 60 * 24)),
+          h: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+          m: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+          s: Math.floor((distance % (1000 * 60)) / 1000),
+        });
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [countdownDate]);
 
-          if (eSnap.exists()) {
-            setEventData(eSnap.data());
-          } else {
-            const initialEvent = {
-              title: "VIP Networking Dinner",
-              location: "The Peninsula, Tsim Sha Tsui",
-              date: "Feb 28, 2026",
-              time: "19:30",
-              price: 50,
-              attendees: [],
-              tgLink: "t.me/+KvxFxWrjnv00NTNI"
-            };
-            setEventData(initialEvent);
-            setDoc(eventRef, initialEvent).catch(() => {});
-          }
-          setInitStatus('active');
-        }
+  return (
+    <div className={`relative overflow-hidden rounded-2xl border transition-all hover:scale-[1.02] duration-300 ${
+      isVip ? 'bg-gradient-to-br from-emerald-950 to-black border-amber-500/30' : 'bg-zinc-900 border-zinc-800'
+    }`}>
+      <div className="h-48 w-full bg-zinc-800 flex items-center justify-center overflow-hidden">
+         <img 
+          src={`https://images.unsplash.com/photo-${isVip ? '1507679799987-c73779587ccf' : '1515187029135-18ee286d815b'}?auto=format&fit=crop&q=80&w=800`} 
+          alt="Event" 
+          className="w-full h-full object-cover opacity-60"
+        />
+        {isVip && <div className="absolute top-4 left-4 bg-amber-500 text-black font-bold text-xs px-2 py-1 rounded">VIP EXCLUSIVE</div>}
+      </div>
+      <div className="p-6">
+        <div className="flex justify-between items-start mb-2">
+          <span className="text-emerald-400 text-xs font-bold uppercase tracking-widest">{date}</span>
+          <div className="flex items-center gap-1 text-zinc-500 text-xs">
+            <Users size={14} /> {attendees} {t.attendees}
+          </div>
+        </div>
+        <h3 className="text-xl font-bold text-white mb-4 line-clamp-1">{title}</h3>
+        <div className="grid grid-cols-4 gap-2 bg-black/40 p-3 rounded-xl border border-white/5">
+          <div className="text-center">
+            <div className="text-lg font-bold text-amber-400">{timeLeft.d}</div>
+            <div className="text-[10px] text-zinc-500 uppercase">{t.days}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-bold text-amber-400">{timeLeft.h}</div>
+            <div className="text-[10px] text-zinc-500 uppercase">{t.hours}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-bold text-amber-400">{timeLeft.m}</div>
+            <div className="text-[10px] text-zinc-500 uppercase">{t.mins}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-bold text-amber-400">{timeLeft.s}</div>
+            <div className="text-[10px] text-zinc-500 uppercase">{t.secs}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
-        // 3. Subscriptions
-        const unsubU = onSnapshot(userRef, (s) => s.exists() && setUserData(s.data()));
-        const unsubE = onSnapshot(eventRef, (s) => s.exists() && setEventData(s.data()));
+const App = () => {
+  const [lang, setLang] = useState('en');
+  const [activePage, setActivePage] = useState('home');
+  const [user, setUser] = useState(null);
+  const [membershipId, setMembershipId] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const t = translations[lang];
 
-        return () => { unsubU(); unsubE(); };
-      } catch (err) {
-        console.error(err);
-        if (mounted) {
-          setInitStatus('error');
-          setErrorMessage(err.message);
-        }
+  useEffect(() => {
+    const initAuth = async () => {
+      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+        await signInWithCustomToken(auth, __initial_auth_token);
+      } else {
+        await signInAnonymously(auth);
       }
     };
-
-    startSession();
-    return () => { mounted = false; };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+    });
+    return () => unsubscribe();
   }, []);
 
-  const handleJoin = async () => {
-    if (!user || !userData) return;
-    const confirm = window.confirm(`Join "${eventData?.title}"? Confirmation fee: $${eventData?.price}`);
-    if (confirm) {
-      try {
-        const eventRef = doc(db, 'artifacts', appId, 'public', 'data');
-        await updateDoc(eventRef, {
-          attendees: arrayUnion({
-            uid: user.uid,
-            name: `Member_${user.uid.slice(0, 4)}`,
-            timestamp: Date.now()
-          })
-        });
-      } catch (e) {
-        alert("Action failed. Verification required.");
+  useEffect(() => {
+    if (!user) return;
+    const userDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'membership', 'status');
+    const unsub = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setMembershipId(docSnap.data().memberId);
       }
+    }, (err) => console.error(err));
+    return () => unsub();
+  }, [user]);
+
+  // Security Guard for Page 5
+  useEffect(() => {
+    if (activePage === 'members' && !membershipId) {
+      const timer = setTimeout(() => {
+        setActivePage('register');
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [activePage, membershipId]);
+
+  const handlePayment = async () => {
+    if (!user) return;
+    setIsProcessing(true);
+    // Simulate payment delay
+    await new Promise(r => setTimeout(r, 2000));
+    
+    const newId = `TW-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+    const userDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'membership', 'status');
+    await setDoc(userDocRef, {
+      memberId: newId,
+      joinedAt: new Date().toISOString(),
+      tier: 'Elite'
+    });
+    
+    setIsProcessing(false);
+    setMembershipId(newId);
+    setActivePage('members');
+  };
+
+  const renderContent = () => {
+    switch (activePage) {
+      case 'home':
+        return (
+          <div className="pt-32 pb-20 px-4">
+            <div className="max-w-4xl mx-auto text-center space-y-8">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-sm font-medium animate-pulse">
+                <ShieldCheck size={16} /> Elite Networking Group
+              </div>
+              <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight leading-tight">
+                {t.heroTitle}
+              </h1>
+              <p className="text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+                {t.heroSub}
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
+                <button 
+                  onClick={() => setActivePage('register')}
+                  className="px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-black font-bold rounded-xl hover:shadow-[0_0_30px_rgba(245,158,11,0.4)] transition-all flex items-center justify-center gap-2"
+                >
+                  {t.ctaJoin} <ChevronRight size={20} />
+                </button>
+                <button 
+                   onClick={() => setActivePage('events')}
+                   className="px-8 py-4 bg-zinc-900 text-white font-bold rounded-xl border border-zinc-800 hover:bg-zinc-800 transition-all"
+                >
+                  {t.navEvents}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-20">
+                <div className="p-8 rounded-3xl bg-zinc-900/50 border border-zinc-800/50">
+                  <div className="text-4xl font-bold text-emerald-400 mb-2">
+                    <Counter target={1250} />+
+                  </div>
+                  <div className="text-zinc-500 font-medium">{t.memberCount}</div>
+                </div>
+                <div className="p-8 rounded-3xl bg-zinc-900/50 border border-zinc-800/50">
+                  <div className="text-4xl font-bold text-emerald-400 mb-2">
+                    $<Counter target={450} />M+
+                  </div>
+                  <div className="text-zinc-500 font-medium">{lang === 'en' ? 'Asset Value' : '資產價值'}</div>
+                </div>
+                <div className="p-8 rounded-3xl bg-zinc-900/50 border border-zinc-800/50">
+                  <div className="text-4xl font-bold text-emerald-400 mb-2">
+                    <Counter target={12} />
+                  </div>
+                  <div className="text-zinc-500 font-medium">{lang === 'en' ? 'Global Chapters' : '全球分會'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'events':
+        return (
+          <div className="pt-32 pb-20 px-4 max-w-7xl mx-auto">
+            <h2 className="text-3xl font-bold text-amber-400 mb-12 flex items-center gap-3">
+              <Calendar /> {t.standardEvents}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
+              <EventCard 
+                title={lang === 'en' ? "Luxury Yacht Networking" : "豪華遊艇社交會"}
+                date="Oct 24, 2024"
+                attendees={45}
+                countdownDate="2024-10-24T18:00:00"
+                lang={lang}
+              />
+              <EventCard 
+                title={lang === 'en' ? "Global FinTech Summit" : "全球金融科技峰會"}
+                date="Nov 12, 2024"
+                attendees={120}
+                countdownDate="2024-11-12T09:00:00"
+                lang={lang}
+              />
+               <EventCard 
+                title={lang === 'en' ? "Real Estate Portfolio" : "房地產投資組合研討"}
+                date="Dec 05, 2024"
+                attendees={30}
+                countdownDate="2024-12-05T14:00:00"
+                lang={lang}
+              />
+            </div>
+
+            <h2 className="text-3xl font-bold text-emerald-400 mb-12 flex items-center gap-3">
+              <ShieldCheck /> {t.vipEvents}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <EventCard 
+                isVip
+                title={lang === 'en' ? "Private Island M&A Mastermind" : "私人島嶼併購大師會"}
+                date="Nov 30, 2024"
+                attendees={12}
+                countdownDate="2024-11-30T10:00:00"
+                lang={lang}
+              />
+               <EventCard 
+                isVip
+                title={lang === 'en' ? "Billionaire Tech Synergy" : "億萬富翁技術協同"}
+                date="Jan 15, 2025"
+                attendees={8}
+                countdownDate="2025-01-15T20:00:00"
+                lang={lang}
+              />
+            </div>
+          </div>
+        );
+
+      case 'vision':
+        return (
+          <div className="pt-32 pb-20 px-4 max-w-6xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-bold text-white mb-4">{t.visionTitle}</h2>
+              <div className="w-24 h-1 bg-amber-500 mx-auto"></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+              <div className="bg-zinc-900 p-10 rounded-[2rem] border border-zinc-800 shadow-2xl relative group">
+                <div className="w-16 h-16 bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-110 transition-transform">
+                  <Target size={32} />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-4">{t.mission1}</h3>
+                <p className="text-zinc-400 leading-relaxed">{t.mission1Desc}</p>
+              </div>
+              <div className="bg-zinc-900 p-10 rounded-[2rem] border border-zinc-800 shadow-2xl relative group">
+                <div className="w-16 h-16 bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-400 mb-6 group-hover:scale-110 transition-transform">
+                  <CreditCard size={32} />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-4">{t.mission2}</h3>
+                <p className="text-zinc-400 leading-relaxed">{t.mission2Desc}</p>
+              </div>
+              <div className="bg-zinc-900 p-10 rounded-[2rem] border border-zinc-800 shadow-2xl relative group">
+                <div className="w-16 h-16 bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
+                  <Users size={32} />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-4">{t.mission3}</h3>
+                <p className="text-zinc-400 leading-relaxed">{t.mission3Desc}</p>
+              </div>
+            </div>
+
+            <div className="mt-20 p-12 bg-gradient-to-r from-emerald-950/40 to-black rounded-[3rem] border border-emerald-500/10">
+               <h4 className="text-2xl font-bold text-amber-400 mb-6 uppercase tracking-widest">{t.visionStrategy}</h4>
+               <div className="space-y-6">
+                 {[1, 2, 3, 4].map(i => (
+                   <div key={i} className="flex gap-4 items-start">
+                     <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold flex-shrink-0">
+                       {i}
+                     </div>
+                     <p className="text-zinc-300 text-lg">
+                       {lang === 'en' 
+                        ? ["Identification of High-Ticket Opportunities", "Vetting Participants for Alignment", "Capital Pooling & Asset Synergy", "Scaled Acquisition & Dividends"][i-1]
+                        : ["識別高價成交機會", "審查參與者的匹配度", "資本池化與資產協同", "規模化獲取與利潤分紅"][i-1]
+                       }
+                     </p>
+                   </div>
+                 ))}
+               </div>
+            </div>
+          </div>
+        );
+
+      case 'register':
+        return (
+          <div className="pt-32 pb-20 px-4 max-w-xl mx-auto">
+            <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-8 shadow-2xl">
+              <div className="text-center mb-8">
+                <h2 className="text-3xl font-bold text-white mb-2">{t.regTitle}</h2>
+                <p className="text-zinc-500">{t.regSub}</p>
+              </div>
+
+              {membershipId ? (
+                <div className="text-center p-8 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl animate-in zoom-in-95 duration-500">
+                  <CheckCircle2 className="mx-auto text-emerald-400 mb-4" size={48} />
+                  <h3 className="text-xl font-bold text-white mb-2">{t.accessGranted}</h3>
+                  <p className="text-zinc-400 mb-6 text-sm">{t.membershipId}</p>
+                  <div className="bg-black py-3 rounded-lg text-emerald-400 font-mono text-xl tracking-widest border border-emerald-500/30">
+                    {membershipId}
+                  </div>
+                  <button 
+                    onClick={() => setActivePage('members')}
+                    className="mt-8 w-full py-4 bg-emerald-600 text-white rounded-xl font-bold"
+                  >
+                    Enter Member Portal
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <input className="bg-black border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500" placeholder="First Name" />
+                    <input className="bg-black border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500" placeholder="Last Name" />
+                  </div>
+                  <input className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500" placeholder="Business Email" />
+                  
+                  <div className="pt-4">
+                    <p className="text-sm text-zinc-500 mb-4">{t.payMethod}</p>
+                    <div className="grid grid-cols-4 gap-3 opacity-60">
+                      {['Apple Pay', 'Google Pay', 'Stripe', 'Visa'].map(p => (
+                        <div key={p} className="h-10 border border-zinc-800 rounded-lg flex items-center justify-center text-[10px] font-bold text-zinc-300 bg-zinc-800/30">
+                          {p}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={handlePayment}
+                    disabled={isProcessing}
+                    className="w-full py-4 bg-amber-500 text-black font-bold rounded-xl hover:bg-amber-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-3"
+                  >
+                    {isProcessing ? <Clock className="animate-spin" /> : <CreditCard />}
+                    {isProcessing ? (lang === 'en' ? 'Processing...' : '正在處理...') : t.processPayment}
+                  </button>
+                  <p className="text-[10px] text-zinc-600 text-center uppercase tracking-widest">Secure 256-bit Encrypted Transaction</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'members':
+        if (!membershipId) {
+          return (
+            <div className="pt-32 pb-20 px-4 flex flex-col items-center justify-center min-h-[70vh]">
+              <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center text-amber-500 mb-6 animate-bounce">
+                <Lock size={40} />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">{t.lockedContent}</h2>
+              <p className="text-zinc-500 text-center animate-pulse">{t.redirectMsg}</p>
+            </div>
+          );
+        }
+        return (
+          <div className="pt-32 pb-20 px-4 max-w-4xl mx-auto text-center">
+            <div className="bg-gradient-to-b from-emerald-950/20 to-black rounded-[3rem] p-12 border border-emerald-500/20 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 text-emerald-900 opacity-20 rotate-12">
+                <ShieldCheck size={160} />
+              </div>
+              
+              <div className="relative z-10">
+                <h2 className="text-4xl font-bold text-white mb-4">Welcome, Elite Member</h2>
+                <div className="inline-block px-4 py-1 bg-amber-500/20 text-amber-500 rounded-full text-sm font-mono mb-8">
+                   ID: {membershipId}
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
+                  <div className="bg-zinc-900/80 p-8 rounded-3xl border border-zinc-800 text-left">
+                    <h3 className="text-xl font-bold text-white mb-2">Member Portal</h3>
+                    <p className="text-zinc-500 text-sm mb-6">Manage your joint ventures and view exclusive leads.</p>
+                    <button className="w-full py-3 bg-zinc-800 text-zinc-300 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-zinc-700">
+                      Dashboard <ExternalLink size={16} />
+                    </button>
+                  </div>
+                  
+                  <div className="bg-blue-600/10 p-8 rounded-3xl border border-blue-500/30 text-left">
+                    <h3 className="text-xl font-bold text-blue-400 mb-2">Telegram Group</h3>
+                    <p className="text-zinc-400 text-sm mb-6">Connect instantly with our $100M+ network of leaders.</p>
+                    <a 
+                      href="https://t.me/techwealth_exclusive" 
+                      target="_blank"
+                      className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-500 transition-colors shadow-lg shadow-blue-900/20"
+                    >
+                      {t.telegramBtn}
+                    </a>
+                  </div>
+                </div>
+                
+                <div className="mt-12 pt-12 border-t border-zinc-800">
+                  <h4 className="text-zinc-500 uppercase tracking-[0.3em] text-xs font-bold mb-6">Active Chapters</h4>
+                  <div className="flex flex-wrap justify-center gap-4">
+                    {['Hong Kong', 'Singapore', 'London', 'Dubai', 'Zürich', 'New York'].map(city => (
+                      <span key={city} className="px-4 py-1 bg-zinc-900 text-zinc-400 rounded-full text-xs border border-zinc-800">{city}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
     }
   };
 
-  if (initStatus === 'loading') {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-blue-500 font-mono text-[10px] tracking-[0.4em] uppercase">Authenticating Protocol...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (initStatus === 'error') {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
-        <div className="max-w-sm text-center space-y-6">
-          <div className="text-red-500 text-5xl font-black">!</div>
-          <div className="space-y-2">
-            <h2 className="text-white font-black uppercase tracking-tight text-xl">Connection Error</h2>
-            <p className="text-slate-500 text-[11px] leading-relaxed font-mono px-4">{errorMessage}</p>
-          </div>
-          <button onClick={() => window.location.reload()} className="w-full py-4 bg-blue-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-xl">Initialize Retry</button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-100 selection:bg-blue-600/30 font-sans">
-      <nav className="fixed top-0 w-full z-50 bg-slate-950/80 backdrop-blur-md border-b border-white/5 h-16 px-6">
-        <div className="max-w-6xl mx-auto h-full flex justify-between items-center">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('landing')}>
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-black italic shadow-lg shadow-blue-600/20 text-white">TW</div>
-            <span className="font-black text-xl tracking-tighter italic">TECHWEALTH</span>
-          </div>
-          <button onClick={() => setView('events')} className="text-[10px] font-black bg-white text-black px-5 py-2.5 rounded-full hover:bg-blue-600 hover:text-white transition-all uppercase tracking-widest">Portal</button>
-        </div>
-      </nav>
-
-      <main className="pt-24 px-6 max-w-6xl mx-auto pb-24">
-        {view === 'landing' ? (
-          <div className="py-24 flex flex-col items-center text-center space-y-12">
-            <h1 className="text-6xl md:text-9xl font-black italic tracking-tighter uppercase leading-[0.8] animate-in fade-in slide-in-from-top-8 duration-700">
-              Verified<br/><span className="text-blue-600">Growth.</span>
-            </h1>
-            <p className="text-slate-400 max-w-md text-lg font-medium leading-relaxed opacity-80">
-              High-tier networking for validated digital asset traders and marketplace leaders.
-            </p>
-            <button onClick={() => setView('events')} className="px-12 py-6 bg-blue-600 text-white rounded-2xl font-black text-xs tracking-widest uppercase hover:scale-105 transition-transform shadow-2xl shadow-blue-600/30">
-              Enter The Collective
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            {/* MAIN EVENT CARD */}
-            <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-white/5 p-8 md:p-14 rounded-[3rem] shadow-2xl">
-              <div className="flex flex-col lg:flex-row justify-between items-center gap-12">
-                <div className="space-y-8 text-center lg:text-left">
-                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-600/10 border border-blue-600/20 text-blue-500 text-[10px] font-black uppercase tracking-widest">
-                    Next Gathering Scheduled
-                  </div>
-                  <h2 className="text-5xl md:text-7xl font-black italic tracking-tighter uppercase leading-none">{eventData?.title}</h2>
-                  <div className="flex flex-wrap justify-center lg:justify-start gap-10 text-slate-400 font-bold text-xs uppercase tracking-widest">
-                    <div className="flex items-center gap-3"><IconCalendar /> {eventData?.date}</div>
-                    <div className="flex items-center gap-3"><IconUsers /> {eventData?.attendees?.length || 0} Members</div>
-                  </div>
-                </div>
-                <div className="w-full lg:w-auto">
-                  {eventData?.attendees?.some(a => a.uid === user?.uid) ? (
-                    <div className="bg-green-500/10 text-green-500 border border-green-500/20 px-12 py-6 rounded-3xl font-black text-xs uppercase text-center shadow-inner">
-                      Seat Reserved &bull; Access Granted
-                    </div>
-                  ) : (
-                    <button onClick={handleJoin} className="w-full px-12 py-6 bg-white text-black rounded-3xl font-black text-xs tracking-widest uppercase hover:bg-blue-600 hover:text-white transition-all shadow-xl">
-                      Secure Reservation — ${eventData?.price}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid lg:grid-cols-12 gap-12">
-              {/* DETAILS & ROSTER */}
-              <div className="lg:col-span-8 space-y-16">
-                <section>
-                  <h3 className="text-slate-500 font-black text-[10px] uppercase tracking-[0.4em] mb-10 flex items-center gap-4">
-                    <span className="w-8 h-[1px] bg-slate-800"></span> Gathering Logistics
-                  </h3>
-                  <div className="grid sm:grid-cols-2 gap-8">
-                    <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 group hover:bg-white/[0.07] transition-colors">
-                      <div className="text-blue-500 mb-3 uppercase text-[9px] font-black tracking-[0.2em]">Primary Venue</div>
-                      <p className="font-black text-xl text-white uppercase italic leading-tight">{eventData?.location}</p>
-                    </div>
-                    <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 group hover:bg-white/[0.07] transition-colors">
-                      <div className="text-blue-500 mb-3 uppercase text-[9px] font-black tracking-[0.2em]">Entry Time</div>
-                      <p className="font-black text-xl text-white uppercase italic leading-tight">{eventData?.time} Sharp</p>
-                    </div>
-                  </div>
-                </section>
-
-                <section>
-                  <h3 className="text-slate-500 font-black text-[10px] uppercase tracking-[0.4em] mb-10 flex items-center gap-4">
-                    <span className="w-8 h-[1px] bg-slate-800"></span> Verified Members
-                  </h3>
-                  <div className="flex flex-wrap gap-4">
-                    {eventData?.attendees?.map((att, idx) => (
-                      <div key={idx} className="bg-slate-900 px-5 py-3 rounded-2xl border border-white/5 flex items-center gap-3 shadow-lg">
-                        <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-black text-white italic">M</div>
-                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{att.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              </div>
-
-              {/* PROTOCOL SIDEBAR */}
-              <aside className="lg:col-span-4 space-y-8">
-                <div className="bg-slate-900 border border-white/5 p-10 rounded-[3rem] shadow-xl relative overflow-hidden">
-                  <div className="relative z-10 space-y-8">
-                    <h4 className="font-black text-[11px] text-blue-500 uppercase tracking-widest">Invite Protocol</h4>
-                    
-                    <div className="space-y-4">
-                       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">Telegram Gateway</p>
-                       <div className="p-4 bg-black/40 rounded-xl border border-white/5 font-mono text-[10px] text-blue-400 break-all flex justify-between items-center group cursor-pointer" onClick={() => window.open(`https://${eventData?.tgLink}`)}>
-                          {eventData?.tgLink}
-                          <IconExternal />
-                       </div>
-                    </div>
-
-                    <div className="p-6 bg-white rounded-3xl flex flex-col items-center justify-center gap-4 aspect-square shadow-2xl shadow-blue-600/10">
-                       <div className="w-full h-full border-4 border-black/5 rounded-2xl flex items-center justify-center relative">
-                          <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://t.me/+KvxFxWrjnv00NTNI" alt="QR" className="w-3/4 opacity-90" />
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                             <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center border-4 border-white">
-                                <div className="w-3 h-3 bg-white rounded-full"></div>
-                             </div>
-                          </div>
-                       </div>
-                       <p className="text-[9px] text-black font-black uppercase tracking-widest opacity-40">Scan to Sync</p>
-                    </div>
-
-                    <ul className="space-y-5">
-                      {[
-                        "Identity validation required at entrance.",
-                        "Table location shared via private DM.",
-                        "Strict no-solicitation policy."
-                      ].map((text, i) => (
-                        <li key={i} className="flex gap-4 items-start">
-                          <div className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-1.5" />
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">{text}</p>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="absolute -top-12 -right-12 w-40 h-40 bg-blue-600/5 blur-[80px] rounded-full"></div>
-                </div>
-              </aside>
-            </div>
-          </div>
-        )}
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-emerald-500/30">
+      <Navbar 
+        activePage={activePage} 
+        setActivePage={setActivePage} 
+        lang={lang} 
+        setLang={setLang}
+        isMember={!!membershipId}
+      />
+      
+      <main className="animate-in fade-in duration-700">
+        {renderContent()}
       </main>
 
-      <footer className="py-16 border-t border-white/5 text-center text-slate-800 text-[10px] font-black uppercase tracking-[0.8em]">
-        TW Collective &bull; End-to-End Encrypted
+      <footer className="border-t border-zinc-900 py-10 text-center">
+        <p className="text-zinc-600 text-xs tracking-widest uppercase">
+          © 2024 TechWealth Collective. Privileged & Confidential.
+        </p>
       </footer>
     </div>
   );
-}
+};
+
+export default App;
 
