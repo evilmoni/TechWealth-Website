@@ -32,12 +32,14 @@ import {
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
-const firebaseConfig = {apiKey: "YOUR_API_KEY",
-  authDomain: "tech-wealth-v1.firebaseapp.com",
-  projectId: "tech-wealth-v1",
-  storageBucket: "tech-wealth-v1.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+const firebaseConfig = {
+  apiKey: "AIzaSyDUDQti3a-SnstsakWSB6vTppsxDV_gh2Q",
+  authDomain: "techwealth-website.firebaseapp.com",
+  projectId: "techwealth-website",
+  storageBucket: "techwealth-website.firebasestorage.app",
+  messagingSenderId: "36453865287",
+  appId: "1:36453865287:web:22bef340b02a7b8e385e62",
+  measurementId: "G-HLRMJ3E11E"
 };
 
 // --- Translations ---
