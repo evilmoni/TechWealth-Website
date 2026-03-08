@@ -32,11 +32,13 @@ import {
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
-const firebaseConfig = JSON.parse(__firebase_config);
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'tech-wealth-v1';
+const firebaseConfig = {apiKey: "YOUR_API_KEY",
+  authDomain: "tech-wealth-v1.firebaseapp.com",
+  projectId: "tech-wealth-v1",
+  storageBucket: "tech-wealth-v1.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
 
 // --- Translations ---
 const translations = {
